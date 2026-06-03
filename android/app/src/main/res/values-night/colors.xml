@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark Lipa surface — keeps the native launch screen seamless with the
+         in-app splash when the OS is in Dark Mode. -->
+    <color name="lipa_bg">#16140F</color>
+</resources>

@@ -1,0 +1,65 @@
+name: lipa_agent
+description: "Lipa — application mobile agent (cash-in/out, enrôlement client, cartes, commissions)."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # State management & DI
+  flutter_riverpod: ^2.6.1
+
+  # Networking
+  dio: ^5.7.0
+
+  # Secure token storage
+  flutter_secure_storage: ^9.2.4
+
+  # Fonts (Bricolage Grotesque + DM Mono) fetched & cached at runtime,
+  # matching the Lipa customer design system.
+  google_fonts: ^6.2.1
+
+  # Utilities
+  uuid: ^4.5.1
+  intl: ^0.20.2
+
+  # Receipts & statements: generate a PDF locally and open the system
+  # print/preview sheet (save/share), plus a native share sheet for text.
+  pdf: ^3.11.1
+  printing: ^5.13.3
+  share_plus: ^10.1.2
+
+  # KYC document capture / pick (camera + gallery).
+  image_picker: ^1.1.2
+
+  # Real NFC tag reading for card scanning (spec §5.4). Phones without an NFC
+  # chip fall back to manual UID entry; even on NFC phones the agent can opt
+  # into manual entry. Abstracted behind the Scanner seam (see core/scan).
+  nfc_manager: 4.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+  # Generates Android/iOS launcher icons from a single source PNG.
+  # Dev-only: it does not ship in the built app.
+  flutter_launcher_icons: ^0.14.1
+
+flutter:
+  uses-material-design: true
+
+# App launcher icon configuration.
+# Uses the same Lipa logo as the customer app (assets/icon/lipa_icon.png),
+# then run:  dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/lipa_icon.png"
+  remove_alpha_ios: true
+  background_color_ios: "#F6F4EF"

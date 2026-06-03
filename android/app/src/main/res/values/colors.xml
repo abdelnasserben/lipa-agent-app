@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Warm Lipa surface (#F6F4EF) — keeps the native launch screen seamless
+         with the in-app splash. -->
+    <color name="lipa_bg">#F6F4EF</color>
+</resources>
