@@ -6,6 +6,7 @@ import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/utils/formatters.dart';
+import '../../core/utils/validators.dart';
 import '../../core/widgets/amount_input.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/form_fields.dart';
@@ -157,12 +158,8 @@ class _CardSaleScreenState extends ConsumerState<CardSaleScreen> {
                       variant: BtnVariant.secondary,
                       full: true,
                       loading: _busy && _customer == null,
-                      onPressed: _phone.text
-                                  .replaceAll(RegExp(r'\D'), '')
-                                  .length >=
-                              4
-                          ? _lookup
-                          : null,
+                      onPressed:
+                          PhoneValidator.isComplete(_phone.text) ? _lookup : null,
                     ),
                   ] else
                     PartyCard(

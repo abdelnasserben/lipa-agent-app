@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/utils/formatters.dart';
+import '../../core/utils/validators.dart';
 import '../../core/widgets/amount_input.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/form_fields.dart';
@@ -116,7 +117,7 @@ class _LookupStepState extends ConsumerState<_LookupStep> {
     super.dispose();
   }
 
-  bool get _valid => _phone.text.replaceAll(RegExp(r'\D'), '').length >= 4;
+  bool get _valid => PhoneValidator.isComplete(_phone.text);
 
   @override
   Widget build(BuildContext context) {

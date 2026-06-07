@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../core/utils/validators.dart';
 import '../../core/widgets/code_field.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/form_fields.dart';
@@ -167,8 +168,7 @@ class _LoginFormState extends ConsumerState<_LoginForm> {
   }
 
   bool get _valid =>
-      _phone.text.replaceAll(RegExp(r'\D'), '').length >= 4 &&
-      _pin.text.length >= 4;
+      PhoneValidator.isComplete(_phone.text) && PinValidator.isValid(_pin.text);
 
   @override
   Widget build(BuildContext context) {
@@ -353,7 +353,8 @@ class _PinSetupFormState extends ConsumerState<_PinSetupForm> {
     super.dispose();
   }
 
-  bool get _valid => _pin.text.length >= 4 && _pin.text == _confirm.text;
+  bool get _valid =>
+      PinValidator.isValid(_pin.text) && _pin.text == _confirm.text;
 
   @override
   Widget build(BuildContext context) {
@@ -426,9 +427,9 @@ class _ForgotPinFormState extends ConsumerState<_ForgotPinForm> {
   }
 
   bool get _valid =>
-      _phone.text.replaceAll(RegExp(r'\D'), '').length >= 4 &&
+      PhoneValidator.isComplete(_phone.text) &&
       _code.length == 6 &&
-      _newPin.text.length >= 4 &&
+      PinValidator.isValid(_newPin.text) &&
       _newPin.text == _confirm.text;
 
   @override

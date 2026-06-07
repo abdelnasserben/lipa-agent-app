@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../core/utils/validators.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/result_screen.dart';
@@ -25,19 +26,18 @@ class _EnrollScreenState extends ConsumerState<EnrollScreen> {
   final _fullName = TextEditingController();
   final _phone = TextEditingController();
   final _idNumber = TextEditingController();
-  final _island = TextEditingController();
   final _city = TextEditingController();
   final _district = TextEditingController();
 
   DateTime? _dob;
   String _idType = 'CNI';
+  String? _island; // one of the three islands of the archipelago, or null.
 
   @override
   void dispose() {
     _fullName.dispose();
     _phone.dispose();
     _idNumber.dispose();
-    _island.dispose();
     _city.dispose();
     _district.dispose();
     super.dispose();
@@ -46,7 +46,7 @@ class _EnrollScreenState extends ConsumerState<EnrollScreen> {
   bool get _valid =>
       _fullName.text.trim().isNotEmpty &&
       _dob != null &&
-      _phone.text.replaceAll(RegExp(r'\D'), '').length >= 4 &&
+      PhoneValidator.isComplete(_phone.text) &&
       _idNumber.text.trim().isNotEmpty;
 
   String _isoDate(DateTime d) =>
@@ -72,7 +72,7 @@ class _EnrollScreenState extends ConsumerState<EnrollScreen> {
       phoneNumber: _phone.text.replaceAll(RegExp(r'\D'), ''),
       nationalIdNumber: _idNumber.text.trim(),
       nationalIdType: _idType,
-      addressIsland: _island.text.trim(),
+      addressIsland: _island,
       addressCity: _city.text.trim(),
       addressDistrict: _district.text.trim(),
     );
@@ -142,8 +142,13 @@ class _EnrollScreenState extends ConsumerState<EnrollScreen> {
                           weight: FontWeight.w700,
                           color: AppColors.inkLow)),
                   const SizedBox(height: 12),
-                  BoxedTextField(controller: _island, hintText: 'Île'),
-                  const SizedBox(height: 10),
+                  const FieldLabel('Île'),
+                  const SizedBox(height: 8),
+                  _IslandPicker(
+                    value: _island,
+                    onChanged: (v) => setState(() => _island = v),
+                  ),
+                  const SizedBox(height: 14),
                   BoxedTextField(controller: _city, hintText: 'Ville'),
                   const SizedBox(height: 10),
                   BoxedTextField(controller: _district, hintText: 'Quartier'),
@@ -239,6 +244,42 @@ class _IdTypePicker extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppRadius.pill),
               side: BorderSide(
                   color: value == code ? AppColors.brand : AppColors.borderHi),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// The three islands of the Comoros archipelago. The address island is optional
+/// (spec §6.3), so tapping the selected chip clears it back to null.
+class _IslandPicker extends StatelessWidget {
+  const _IslandPicker({required this.value, required this.onChanged});
+  final String? value;
+  final ValueChanged<String?> onChanged;
+
+  static const _islands = ['Ngazidja', 'Anjouan', 'Mohéli'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      children: [
+        for (final island in _islands)
+          ChoiceChip(
+            label: Text(island),
+            selected: value == island,
+            onSelected: (_) => onChanged(value == island ? null : island),
+            labelStyle: AppText.ui(
+                size: 13,
+                weight: FontWeight.w600,
+                color: value == island ? Colors.white : AppColors.inkHi),
+            selectedColor: AppColors.brand,
+            backgroundColor: AppColors.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              side: BorderSide(
+                  color: value == island ? AppColors.brand : AppColors.borderHi),
             ),
           ),
       ],

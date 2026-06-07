@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../core/utils/validators.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/form_fields.dart';
 import 'security_controller.dart';
@@ -28,10 +29,22 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
     super.dispose();
   }
 
+  /// The new PIN can't be the same as the current one — that's not a change,
+  /// and the backend would reject (or no-op) it. Show the hint only once the
+  /// agent has fully typed both, to avoid nagging mid-entry.
+  bool get _sameAsCurrent =>
+      PinValidator.isValid(_current.text) &&
+      _current.text == _newPin.text;
+
+  /// The new PIN and its confirmation must match (mirrors the setup flow).
+  bool get _confirmMismatch =>
+      _confirm.text.isNotEmpty && _newPin.text != _confirm.text;
+
   bool get _valid =>
-      _current.text.length >= 4 &&
-      _newPin.text.length >= 4 &&
-      _newPin.text == _confirm.text;
+      PinValidator.isValid(_current.text) &&
+      PinValidator.isValid(_newPin.text) &&
+      _newPin.text == _confirm.text &&
+      _newPin.text != _current.text;
 
   @override
   Widget build(BuildContext context) {
@@ -75,6 +88,18 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
                   const SizedBox(height: 8),
                   PinDigitsInput(
                       controller: _confirm, onChanged: (_) => setState(() {})),
+                  if (_sameAsCurrent) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                        'Le nouveau PIN doit être différent de l’actuel.',
+                        style:
+                            AppText.ui(size: 13, color: AppColors.danger)),
+                  ] else if (_confirmMismatch) ...[
+                    const SizedBox(height: 10),
+                    Text('Les deux PIN ne correspondent pas.',
+                        style:
+                            AppText.ui(size: 13, color: AppColors.danger)),
+                  ],
                   if (state.error != null) ...[
                     const SizedBox(height: 14),
                     Text(state.error!,

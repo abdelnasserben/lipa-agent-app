@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_tokens.dart';
 import '../utils/phone_input_formatter.dart';
+import '../utils/validators.dart';
 
 /// Bold small label above a field.
 class FieldLabel extends StatelessWidget {
@@ -81,57 +82,80 @@ class BoxedTextField extends StatelessWidget {
   }
 }
 
-/// Comorian phone input with a fixed +269 prefix chip.
-class PhoneInput extends StatelessWidget {
+/// Comorian phone input with a fixed +269 prefix chip. Surfaces an inline
+/// prefix/length hint (operator must be 3 or 4, 7 digits) so the user can self-
+/// correct before the request is ever attempted.
+class PhoneInput extends StatefulWidget {
   const PhoneInput({super.key, required this.controller, this.onChanged});
   final TextEditingController controller;
   final ValueChanged<String>? onChanged;
 
   @override
+  State<PhoneInput> createState() => _PhoneInputState();
+}
+
+class _PhoneInputState extends State<PhoneInput> {
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 52,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.borderHi),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Row(
-        children: [
-          Container(
-            width: 84,
-            alignment: Alignment.center,
-            decoration: const BoxDecoration(
-              color: AppColors.surfaceAlt,
-              border: Border(right: BorderSide(color: AppColors.border)),
-            ),
-            child: Text('+269',
-                style: AppText.mono(size: 15, weight: FontWeight.w600)),
+    final error = PhoneValidator.errorText(widget.controller.text);
+    final borderColor =
+        error != null ? AppColors.danger : AppColors.borderHi;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          height: 52,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: borderColor),
           ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: TextField(
-                controller: controller,
-                keyboardType: TextInputType.phone,
-                inputFormatters: const [ComorianPhoneFormatter()],
-                onChanged: onChanged,
-                style: AppText.mono(size: 16, letterSpacing: 0.6),
-                decoration: InputDecoration(
-                  border: InputBorder.none,
-                  isDense: true,
-                  hintText: '300 00 00',
-                  hintStyle: AppText.mono(
-                      size: 16,
-                      letterSpacing: 0.6,
-                      color: AppColors.inkFaint),
+          clipBehavior: Clip.antiAlias,
+          child: Row(
+            children: [
+              Container(
+                width: 84,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                  color: AppColors.surfaceAlt,
+                  border: Border(right: BorderSide(color: AppColors.border)),
+                ),
+                child: Text('+269',
+                    style: AppText.mono(size: 15, weight: FontWeight.w600)),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: TextField(
+                    controller: widget.controller,
+                    keyboardType: TextInputType.phone,
+                    inputFormatters: const [ComorianPhoneFormatter()],
+                    onChanged: (v) {
+                      setState(() {});
+                      widget.onChanged?.call(v);
+                    },
+                    style: AppText.mono(size: 16, letterSpacing: 0.6),
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      isDense: true,
+                      hintText: '300 00 00',
+                      hintStyle: AppText.mono(
+                          size: 16,
+                          letterSpacing: 0.6,
+                          color: AppColors.inkFaint),
+                    ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
+        ),
+        if (error != null) ...[
+          const SizedBox(height: 6),
+          Text(error,
+              style: AppText.ui(size: 12, color: AppColors.danger)),
         ],
-      ),
+      ],
     );
   }
 }

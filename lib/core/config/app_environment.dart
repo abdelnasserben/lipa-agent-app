@@ -53,8 +53,11 @@ class AppConfig {
       String.fromEnvironment('ENV', defaultValue: 'local');
 
   // Per-environment API hosts. `--dart-define=API_BASE_URL=...` overrides.
-  // 10.0.2.2 is the Android emulator's alias for the host loopback.
-  static const String _localDefault = 'http://10.0.2.2:8080';
+  // `localhost` works on a real device tethered over USB with
+  //   `adb reverse tcp:8080 tcp:8080`, and on the emulator too (it forwards
+  //   to the host loopback). For an emulator *without* `adb reverse`, override
+  //   with `--dart-define=API_BASE_URL=http://10.0.2.2:8080`.
+  static const String _localDefault = 'http://localhost:8080';
   static const String _prodDefault = 'https://api.lipa.km';
   static const String _baseUrlOverride =
       String.fromEnvironment('API_BASE_URL', defaultValue: '');
@@ -77,6 +80,7 @@ class AppConfig {
       case AppEnvironment.prod:
         return _prodDefault;
       case AppEnvironment.local:
+        // localhost → host loopback via `adb reverse` (device) or emulator.
         return _localDefault;
     }
   }
