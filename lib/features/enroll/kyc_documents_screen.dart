@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -30,10 +32,25 @@ class KycDocumentsScreen extends ConsumerStatefulWidget {
       _KycDocumentsScreenState();
 }
 
+/// Largest dimension we capture/keep for a KYC photo. An ID document stays
+/// perfectly legible at this size, and it keeps the file well under the 10 MB
+/// server cap — full-resolution camera shots otherwise time out on upload and
+/// surface as a misleading "network" error.
+const int _kMaxImageDimension = 1600;
+
+/// Client-side mirror of the server's 10 MB cap (spec §5.5), so we fail fast
+/// with a clear message instead of after a long upload.
+const int _kMaxFileBytes = 10 * 1024 * 1024;
+
 class _KycDocumentsScreenState extends ConsumerState<KycDocumentsScreen> {
   late Future<List<KycDocument>> _future;
   bool _uploading = false;
   KycDocumentType _selectedType = KycDocumentType.nationalId;
+
+  // A captured-but-not-yet-sent document, held for confirmation/preview.
+  Uint8List? _pendingBytes;
+  String? _pendingName;
+  String? _pendingMime;
 
   @override
   void initState() {
@@ -50,20 +67,50 @@ class _KycDocumentsScreenState extends ConsumerState<KycDocumentsScreen> {
     });
   }
 
-  Future<void> _upload(ImageSource source) async {
+  /// Pick/capture an image and stage it for confirmation — does NOT upload yet.
+  Future<void> _pick(ImageSource source) async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: source, imageQuality: 80);
+    final picked = await picker.pickImage(
+      source: source,
+      imageQuality: 80,
+      maxWidth: _kMaxImageDimension.toDouble(),
+      maxHeight: _kMaxImageDimension.toDouble(),
+    );
     if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    if (!mounted) return;
+    if (bytes.length > _kMaxFileBytes) {
+      _snack('Image trop volumineuse (10 Mo maximum).', error: true);
+      return;
+    }
+    setState(() {
+      _pendingBytes = bytes;
+      _pendingName = picked.name;
+      _pendingMime = picked.mimeType;
+    });
+  }
+
+  void _discardPending() {
+    setState(() {
+      _pendingBytes = null;
+      _pendingName = null;
+      _pendingMime = null;
+    });
+  }
+
+  /// Upload the staged document after the agent confirms.
+  Future<void> _confirmUpload() async {
+    final bytes = _pendingBytes;
+    if (bytes == null) return;
     setState(() => _uploading = true);
     try {
-      final bytes = await picked.readAsBytes();
       await ref.read(agentRepositoryProvider).uploadKycDocument(
             customerId: widget.customerId,
             documentType: _selectedType,
             file: KycUploadFile(
               bytes: bytes,
-              filename: picked.name,
-              contentType: picked.mimeType,
+              filename: _pendingName ?? 'document.jpg',
+              contentType: _pendingMime,
             ),
           );
       if (!mounted) return;
@@ -75,6 +122,7 @@ class _KycDocumentsScreenState extends ConsumerState<KycDocumentsScreen> {
           duration: const Duration(seconds: 1),
         ),
       );
+      _discardPending();
       _reload();
     } on ApiError catch (e) {
       if (mounted) _snack(frenchMessageForError(e), error: true);
@@ -110,7 +158,7 @@ class _KycDocumentsScreenState extends ConsumerState<KycDocumentsScreen> {
               title: Text('Prendre une photo', style: AppText.ui(size: 15)),
               onTap: () {
                 Navigator.pop(ctx);
-                _upload(ImageSource.camera);
+                _pick(ImageSource.camera);
               },
             ),
             ListTile(
@@ -120,7 +168,7 @@ class _KycDocumentsScreenState extends ConsumerState<KycDocumentsScreen> {
                   style: AppText.ui(size: 15)),
               onTap: () {
                 Navigator.pop(ctx);
-                _upload(ImageSource.gallery);
+                _pick(ImageSource.gallery);
               },
             ),
             const SizedBox(height: 8),
@@ -153,18 +201,26 @@ class _KycDocumentsScreenState extends ConsumerState<KycDocumentsScreen> {
                     onChanged: (t) => setState(() => _selectedType = t),
                   ),
                   const SizedBox(height: 14),
-                  LipaButton(
-                    label: 'Ajouter un document',
-                    icon: const Icon(Icons.upload_file_rounded),
-                    size: BtnSize.lg,
-                    full: true,
-                    loading: _uploading,
-                    onPressed: _uploading ? null : _pickSource,
-                  ),
-                  const SizedBox(height: 8),
-                  Text('Image, 10 Mo maximum.',
-                      textAlign: TextAlign.center,
-                      style: AppText.ui(size: 12, color: AppColors.inkLow)),
+                  if (_pendingBytes == null) ...[
+                    LipaButton(
+                      label: 'Ajouter un document',
+                      icon: const Icon(Icons.upload_file_rounded),
+                      size: BtnSize.lg,
+                      full: true,
+                      onPressed: _pickSource,
+                    ),
+                    const SizedBox(height: 8),
+                    Text('Image, 10 Mo maximum.',
+                        textAlign: TextAlign.center,
+                        style: AppText.ui(size: 12, color: AppColors.inkLow)),
+                  ] else
+                    _PendingPreview(
+                      bytes: _pendingBytes!,
+                      typeLabel: _selectedType.frLabel,
+                      uploading: _uploading,
+                      onConfirm: _confirmUpload,
+                      onDiscard: _uploading ? null : _discardPending,
+                    ),
                   const SizedBox(height: 24),
                   Text('Documents déjà envoyés',
                       style: AppText.ui(size: 15, weight: FontWeight.w700)),
@@ -213,6 +269,66 @@ class FieldHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       Text(text, style: AppText.ui(size: 13, weight: FontWeight.w600));
+}
+
+/// Preview of a captured-but-unsent document, with explicit confirm/discard so
+/// the upload only happens after the agent reviews the image.
+class _PendingPreview extends StatelessWidget {
+  const _PendingPreview({
+    required this.bytes,
+    required this.typeLabel,
+    required this.uploading,
+    required this.onConfirm,
+    required this.onDiscard,
+  });
+
+  final Uint8List bytes;
+  final String typeLabel;
+  final bool uploading;
+  final VoidCallback onConfirm;
+  final VoidCallback? onDiscard;
+
+  @override
+  Widget build(BuildContext context) {
+    return LipaCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Vérifiez le document — $typeLabel',
+              style: AppText.ui(size: 13, weight: FontWeight.w600)),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 320),
+              child: Image.memory(
+                bytes,
+                fit: BoxFit.contain,
+                width: double.infinity,
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          LipaButton(
+            label: 'Confirmer l’envoi',
+            icon: const Icon(Icons.cloud_upload_outlined),
+            size: BtnSize.lg,
+            full: true,
+            loading: uploading,
+            onPressed: uploading ? null : onConfirm,
+          ),
+          const SizedBox(height: 8),
+          LipaButton(
+            label: 'Reprendre',
+            variant: BtnVariant.ghost,
+            full: true,
+            onPressed: onDiscard,
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _TypePicker extends StatelessWidget {

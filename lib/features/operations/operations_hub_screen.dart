@@ -11,6 +11,7 @@ import '../cards/card_sale_screen.dart';
 import '../cashin/cash_in_screen.dart';
 import '../cashout/cash_out_screen.dart';
 import '../enroll/enroll_screen.dart';
+import '../enroll/kyc_customer_screen.dart';
 
 /// The "Opérer" hub (central FAB) — the launchpad for every agent operation,
 /// grouped by area and gated on the agent's capabilities (spec §11.3).
@@ -75,6 +76,12 @@ class _Body extends StatelessWidget {
             title: 'Enrôler un client',
             subtitle: 'Créer un compte + KYC',
             onTap: () => _push(context, const EnrollScreen()),
+          ),
+          _OpRow(
+            icon: Icons.badge_outlined,
+            title: 'KYC client',
+            subtitle: 'Compléter le dossier d’un client existant',
+            onTap: () => _push(context, const KycCustomerScreen()),
           ),
         ]),
         const SizedBox(height: 18),
